@@ -3,11 +3,14 @@ import mechanize
 import cookielib
 import re
 import json
+import time
+#from datetime import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
+
 
 #Load json data
 with open('info.json') as data_file:
@@ -22,23 +25,32 @@ browser.get("http://supremenewyork.com/shop/all/" + data["subsection"])
 def findItem(color, keywords):
     #Opens page to the hats --change to desired item
     supremeShop = br.open("http://www.supremenewyork.com/shop/all/" + data["subsection"])
+    htmlShop = supremeShop.read()
     #Going to have to edit this to refresh the page unless it gets a result
     link = [""]
+    start = time.time()
+    regex = re.compile(keywords+'.{0,100}'+color) #first find the objects which contain the adjectives
+    regexUrl = re.compile('\/shop\/[a-zA-Z0-9\/]*') #this will then find the link in the previously found strings
     while link[0] == "":
-        print "XD";
-        htmlShop = supremeShop.read()
-        regex = re.compile(keywords+'.{0,100}'+color) #first find the objects which contain the adjectives
-        roughLink = re.findall(regex, htmlShop)
-        regexUrl = re.compile('\/shop\/[a-zA-Z0-9\/]*') #this will then find the link in the previously found strings
-        print link
-        try:
-            link = re.findall(regexUrl, roughLink[0])
-            break
-        except IndexError:
-            link[0] = ""
+        loopTime = int(time.time() - start)
+        if loopTime%15 == 0:
+            print "Searching again"
+            roughLink = re.findall(regex, htmlShop) # find rough outline of link
+            try: # This is a terrible way to get around trying to fill an array with null when the regex finds nothing
+                link = re.findall(regexUrl, roughLink[0])
+                break
+            except IndexError:
+                browser.refresh()
+                link[0] = ""
+                br.set_handle_refresh(mechanize._http.HTTPRefreshProcessor(), max_time=1)
+                htmlShop = supremeShop.read()
     return 'http://www.supremenewyork.com' + link[0]
 
 
+while int(time.strftime("%H")) < 8: # Stalls until hour = 8 am
+    word = "hey"
+while int(time.strftime("%M")) < 59:    #stalls until time = 8:59 am
+    word = "nay" # cant have an empty block so added this shit
 browser.get(findItem(data["color"], data["keyword"])) #Open the newly found link
 wait = WebDriverWait(browser, 2)
 
@@ -90,4 +102,3 @@ def checkOut():
 pickSize(34)
 addToCart()
 checkOut()
-print data[0]
